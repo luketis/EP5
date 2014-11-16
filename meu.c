@@ -1,0 +1,267 @@
+#include "../robot_fight.h"
+#include<math.h>
+typedef enum {ATIROU, ANDOU, VIROU, BLOQUEOU, NADA} Comportamento;
+
+/* Feito por Yan, O Monitor Mais Rápido do Oeste */
+
+static Direction lookDir;
+static char charging;
+
+struct in{
+	Position pos;
+	Direction dir;
+	int distanciaAtual;
+	float distanciaMedia;
+	int somaDist;
+	int balas;
+	int vida;
+	int obstaculos;
+	int score;
+	int isInCp;
+	int somaAtirou;
+	int somaAndou;
+	int somaBlocks;
+	int somaVirou;
+	float taxaDefesa;
+	int tirosQueLevaria;	
+	int tirosQueLevou;
+};
+
+struct ponto{
+	Position pos;
+	int distancia;
+};
+
+typedef struct in *inimigo;
+typedef struct ponto *cponto;
+
+static inimigo inimigos[4];
+static cponto controles[10];
+static int turno;
+
+int isRobot(Tile *t) {
+	return t->type == ROBOT;
+}
+
+int isProjectile(Tile *t) {
+	return t->type == PROJECTILE;
+}
+
+int isBlock(Tile *t) {
+	return t->type == BLOCK;
+}
+
+int valid(Position p, int m, int n) {
+	return p.x >= 0 && p.x < m && p.y >= 0 && p.y < n;
+}
+
+char find(Grid *g, Position p, int (*check)(Tile*)) {
+	int i, s_look = 0, s_size = 100000, dist;
+	for(i = 0; i < 6; i++) {
+		Position s = getNeighbor(p, i);
+		dist = 1;
+		while(valid(s, g->m, g->n)) {
+			if(check(&g->map[s.x][s.y])) {
+				s_look = i;
+				s_size = dist;
+			}
+			s = getNeighbor(s, i);
+				if(++dist > s_size)
+				break;
+		}
+	}
+	lookDir = s_look;
+	return lookDir != 0;
+}
+
+int MaxInt(int x, int y){
+	if(x > y)
+		return x;
+	return y;
+}
+
+int distancia(Position from, Position to){
+	return (MaxInt(to.x - from.x, to.y - from.y) +1 );
+}
+
+void buscaMapa(Grid *g, Position p, inimigo inimigos[], cponto cp[]){
+	Robot *r;
+	int i, j, k, l;
+	Position aux;
+
+	k = 0;
+	l = 0;
+
+	for(i = 0; i < g->m; i++)
+		for(j = 0 ; j < g->n; j++){
+			if(g->map[i][j].type == ROBOT && !(i == p.x && j == p.y)){
+				aux.x = i;
+				aux.y = j;
+				inimigos[k]->pos = aux;
+				inimigos[k]->distanciaAtual = distancia(p, aux);
+				inimigos[k]->distanciaMedia = distancia(p, aux);
+				inimigos[k]->somaDist = distancia(p, aux);
+				r = &g->map[aux.x][aux.y].object.robot;
+				inimigos[k]->dir = r->dir;
+				inimigos[k]->balas = r->bullets;
+				inimigos[k]->score = r->score;
+				inimigos[k]->vida = r->hp;
+				inimigos[k]->obstaculos = r->obstacles;
+				inimigos[k]->isInCp = &g->map[aux.x][aux.y].isControlPoint;
+				inimigos[k]->somaAndou = 0;
+				inimigos[k]->somaAtirou = 0;
+				inimigos[k]->somaVirou = 0;
+				inimigos[k]->somaBlocks = 0;
+				inimigos[k]->taxaDefesa = -1;
+				inimigos[k]->tirosQueLevaria = 0;
+				inimigos[k]->tirosQueLevou = 0;
+				k++;
+			}
+			/*else if(g->map[aux.x][aux.y].isControlPoint){   //Aqui nao ta funcionando por alguma razao
+				aux.x = i;
+				aux.y = j;
+				cp[l]->pos = aux;
+				cp[l]->distancia = distancia(p, aux);
+				l++;
+			}	*/
+		}
+}
+void atualiza(Grid *g, Position p, inimigo inimigos[]){
+	int i, j;
+	int andou;
+	Robot *r;
+	Position pos;
+
+	turno++;
+
+	for(i = 0; i < 3; i++){
+		if(!isRobot(&g->map[inimigos[i]->pos.x][inimigos[i]->pos.y])){ //QUer dizer que andou
+			for(j = 0; j < 6; j++){	
+				pos = getNeighbor(inimigos[i]->pos, j);
+				if(isRobot(&g->map[pos.x][pos.y])){	
+					inimigos[i]->pos = pos;
+					inimigos[i]->distanciaAtual = distancia(p, pos);
+					inimigos[i]->somaDist += distancia(p, pos);
+					inimigos[i]->distanciaMedia = (inimigos[i]->somaDist)/((float) turno);
+					inimigos[i]->somaAndou += 1;
+					inimigos[i]->isInCp = &g->map[pos.x][pos.y].isControlPoint;
+					break;
+				}
+			}
+		}
+		else{
+			r = &g->map[inimigos[i]->pos.x][inimigos[i]->pos.y].object.robot;
+			if(r->dir != inimigos[i]->dir){
+				inimigos[i]->dir = r->dir;
+				inimigos[i]->somaVirou += 1;
+			}
+			for(j = 0; j < 6; j++){
+				pos = getNeighbor(inimigos[i]->pos, j);
+				if(isProjectile(&g->map[pos.x][pos.y])){
+					Projectile *pr = &g->map[inimigos[i]->pos.x][inimigos[i]->pos.y].object.projectile;
+					if(pr->dir == inimigos[i]->dir)
+						inimigos[i]->somaAtirou += 1;
+					else if(abs(pr->dir - j) == 3) //Significa que o tiro esta direcionado para o inimigo sendo espiado
+						inimigos[i]->tirosQueLevaria += 1;
+						
+				}
+				else if(isBlock(&g->map[pos.x][pos.y])){
+					
+					//TODO
+					
+				}
+			}
+
+		}
+		r = &g->map[inimigos[i]->pos.x][inimigos[i]->pos.y].object.robot;
+		inimigos[i]->balas = r->bullets;
+		inimigos[i]->score = r->score;
+		if(inimigos[i]->vida != r->hp)
+			inimigos[i]->tirosQueLevou +=1;
+		inimigos[i]->vida = r->hp;
+		inimigos[i]->obstaculos = r->obstacles;
+		if(inimigos[i]->tirosQueLevaria)
+			inimigos[i]->taxaDefesa = inimigos[i]->tirosQueLevou/((float)inimigos[i]->tirosQueLevaria);
+				
+	}
+	
+
+}
+void prepareGame(Grid *g, Position p, int turnCount) {
+	int i;
+	charging = 0;
+	setName("Principalmente");
+	
+	inimigos[0] = malloc(sizeof(inimigo));
+	inimigos[1] = malloc(sizeof(inimigo));
+	inimigos[2] = malloc(sizeof(inimigo));
+
+	for(i = 0; i <10; i++)
+		controles[i] = malloc(sizeof(cponto));
+	
+	buscaMapa(g, p, inimigos, controles);
+	turno = 0;
+	
+	
+	
+}
+
+Action bestTurn(Direction from, Direction to) {
+	if(((6 + from - to) % 6) < 3) return TURN_LEFT;
+	else return TURN_RIGHT;
+}
+
+Action shoot(Direction from, Direction to) {
+	if(to == ((from + 1) % 6))
+		return SHOOT_RIGHT;
+	else if(to == from)
+		return SHOOT_CENTER;
+	else
+		return SHOOT_LEFT;
+}
+
+int isEmptyControl(Tile *t) {
+	return t->isControlPoint && t->type == NONE;
+}
+
+
+Action processTurn(Grid *g, Position p, int turnsLeft) {
+	
+	atualiza(g, p, inimigos);
+
+
+	Robot *inimigo = &g->map[inimigos[0]->pos.x][inimigos[0]->pos.y].object.robot;
+	
+	printf("%d\n", inimigo->hp);
+	Robot *r = &g->map[p.x][p.y].object.robot;
+	if(r->bullets == 0 || charging) {
+		charging = 1;
+		if(g->map[p.x][p.y].isControlPoint) {
+			if(r->bullets >= 30)
+				charging = 0;
+			return STAND;
+		}
+		if(find(g, p, isEmptyControl)) {
+			if(lookDir == r->dir)
+				return WALK;
+			else
+				return bestTurn(r->dir, lookDir);	
+		}
+		else if(valid(getNeighbor(p, r->dir), g->m, g->n))
+			return WALK;
+		else
+			return TURN_LEFT;
+	}
+	else if(find(g, p, isRobot)) {
+		if(((6 + lookDir - r->dir) % 6) <= 1) {
+			playSong("morra.ogg");
+			return shoot(r->dir, lookDir);
+		}
+		else
+			return bestTurn(r->dir, lookDir);
+	}
+	else if(valid(getNeighbor(p, r->dir), g->m, g->n))
+		return WALK;
+	else
+		return TURN_LEFT;
+}
