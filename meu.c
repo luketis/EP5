@@ -187,6 +187,47 @@ void atualiza(Grid *g, Position p, inimigo inimigos[]){
 	
 
 }
+
+int sendoAlvejado(Grid *g, Position p, Direction myDir, Direction dirs[]){
+
+	Position pos;
+	Projectile *r;
+	int i, j = 0, alvejado = 0;
+	
+	for(i = 0; i < 6; i++){
+		pos = getNeighbor(getNeighbor(p, i), i);
+		if(isProjectile(&g->map[pos.x][pos.y])){
+			r = &g->map[pos.x][pos.y].object.projectile;
+			if(abs(r->dir - i) == 3){
+				dirs[i] = 1;
+				alvejado = 1;
+			}
+		}
+		else
+			dirs[i] = 0;
+	}
+	
+	return alvejado;
+}
+
+//Fazer uma funcao BFS que acha melhor caminho ateh certo ponto. tem q considerar viradas como passos
+
+Action fugir(Grid *g, Position p, Direction dirs[], Direction myDir){
+
+	Position pos;
+	int distAnt = 100000, dist, i;
+	Direction dir;
+	
+	for(i = 0; i < 6; i++){
+		if(!dirs[i]){
+			pos = getNeighbor(p, i);
+			//dist = distancia(pos,
+			//TODO
+		}
+	}
+
+}
+
 void prepareGame(Grid *g, Position p, int turnCount) {
 	int i;
 	charging = 0;
