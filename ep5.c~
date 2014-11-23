@@ -2,7 +2,7 @@
 /*                  Exercicio Programa 5                 */
 /*  Nomes: Felipe Silva Felix  e Lucas de Carvalho Dias  */
 /*                                                       */
-/* Nusp: 8941092 e 8941241                               */
+/* Nusp: ******  e 8941241                               */
 /*-------------------------------------------------------*/
 
 
@@ -421,7 +421,10 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 	inimigoPerto = nearestEnemy(g, p, myDir, 0);
 	findOfensiveSpots(g, p, posOfensiva, inimigoPerto);
 
-	if(sendoAlvejado(g, p, dirs, 1, p) || eu->hp < myHp){   /*Verifica se nos tiles vizinhos ha balas vindo em sua direcao*/
+
+
+
+	if(sendoAlvejado(g, p, dirs, 1, p) || eu->hp < myHp){
 		myHp = eu->hp;
 		
 		if(isSafe(g,getNeighbor(p, myDir), g->m, g->n, p)){
@@ -437,7 +440,7 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 		}
 	}
 
-	else if(sendoAlvejado(g, p, dirs, 2, p)){ /*verifica a 2 tiles de distancia se ha balas vindo em sua direcao*/
+	else if(sendoAlvejado(g, p, dirs, 2, p)){
 
 		for(i = 2; i < 5; i++)
 			if(dirs[(6 + myDir + i)%6])	
@@ -477,7 +480,7 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 
 */
 
-	if(rayCast(g, inimigoPerto.pos, p, myDir, 4, &di) && eu->bullets > 0){ /*Verifica se ha alguem em sua mira */
+	if(rayCast(g, inimigoPerto.pos, p, myDir, 4, &di) && eu->bullets > 0){
 		if(di == 0)
 			return SHOOT_CENTER;
 		else if(di == 1)
@@ -486,7 +489,7 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 			return SHOOT_LEFT;
 	}
 
-	if(distancia(p, nearest(g, p, posOfensiva, 6, myDir)) < distancia(p, nearest(g, p, controles, 10, myDir)) && eu->bullets > 0){ 
+	if(distancia(p, nearest(g, p, posOfensiva, 6, myDir)) < distancia(p, nearest(g, p, controles, 10, myDir)) && eu->bullets > 0){
 		obj = shortestPath(g, p, nearest(g, p, posOfensiva, 6, myDir));
 		
 

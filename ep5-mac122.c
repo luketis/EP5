@@ -4,14 +4,10 @@
 /*                                                       */
 /* Nusp: 8941092 e 8941241                               */
 /*-------------------------------------------------------*/
-
-
 #include "../robot_fight.h"
 #include <math.h>
 
 #define PI 3.14159265
-
-static char charging;
 
 typedef struct in{
 	Position pos;
@@ -24,16 +20,10 @@ typedef struct in{
 	int obstaculos;
 	int score;
 	int isInCp;
-	int mirandoEmMim;
-	int somaAtirou;
-	int somaAndou;
-	int somaBlocks;
-	int somaVirou;
-	float taxaDefesa;
-	int tirosQueLevaria;	
-	int tirosQueLevou;
+	int mirandoEmMim;;
 	int vivo;
 }inimigo;
+
 
 inimigo inimigos[3];
 
@@ -106,7 +96,7 @@ Direction shortestPath(Grid *g, Position from, Position to){
 
 }
 
-int rayCast(Grid *g, Position me, Position him, Direction his, int d, int *dir){
+int rayCast(Grid *g, Position me, Position him, Direction his, int d, int *dir){ /*verifica se o robo na posicao "me" esta na mira do robo na poosicao "him"*/
 	int i, j, result = 0;
 	Position aux;
 	
@@ -125,7 +115,7 @@ int rayCast(Grid *g, Position me, Position him, Direction his, int d, int *dir){
 	return result;
 }
 
-void findOfensiveSpots(Grid *g, Position me, Position op[], inimigo ini){
+void findOfensiveSpots(Grid *g, Position me, Position op[], inimigo ini){ /*funcao para achar pontos bons para atirar*/
 	Position aux;
 	int i, j;
 
@@ -143,7 +133,7 @@ void findOfensiveSpots(Grid *g, Position me, Position op[], inimigo ini){
 
 }
 
-void buscaMapa(Grid *g, Position p, Direction myDir){
+void buscaMapa(Grid *g, Position p, Direction myDir){  /*Funcao para achar os inimigos e os pontos de controle no mapa, guardando suas posicoes*/
 	Robot *r;
 	int i, j, k, l, err;
 	Position aux;
@@ -169,16 +159,7 @@ void buscaMapa(Grid *g, Position p, Direction myDir){
 				inimigos[k].score = r->score;
 				inimigos[k].vida = r->hp;
 				inimigos[k].obstaculos = r->obstacles;
-				
 				inimigos[k].isInCp = g->map[aux.x][aux.y].isControlPoint;
-				
-				inimigos[k].somaAndou = 0;
-				inimigos[k].somaAtirou = 0;
-				inimigos[k].somaVirou = 0;
-				inimigos[k].somaBlocks = 0;
-				inimigos[k].taxaDefesa = -1;
-				inimigos[k].tirosQueLevaria = 0;
-				inimigos[k].tirosQueLevou = 0;
 				inimigos[k].vivo = 1;
 				inimigos[k].mirandoEmMim = rayCast(g, p, inimigos[k].pos, inimigos[k].dir, 4, NULL);
 				k++;
@@ -193,14 +174,14 @@ void buscaMapa(Grid *g, Position p, Direction myDir){
 			}	
 		}
 }
-void atualiza(Grid *g, Position p, Direction myDir){
+void atualiza(Grid *g, Position p, Direction myDir){ /* atualiza as informacoes do inimigo */
 	int i, j, l = 0, err;
 	Robot *r;
 	Position pos;
 	turno += 1;
 	
 	for(i = 0; i < 3; i++){
-		if(inimigos[i].vivo && !isRobot(&g->map[inimigos[i].pos.x][inimigos[i].pos.y])){ //QUer dizer que andou
+		if(inimigos[i].vivo && !isRobot(&g->map[inimigos[i].pos.x][inimigos[i].pos.y])){ //Significa que o inimigo andou
 			for(j = 0; j < 6; j++){	
 				pos = getNeighbor(inimigos[i].pos, j);
 				if(isValid(pos, g->m, g->n) && isRobot(&g->map[pos.x][pos.y])){	
@@ -209,7 +190,6 @@ void atualiza(Grid *g, Position p, Direction myDir){
 					inimigos[i].distanciaAtual = distancia(p, pos) + (err > 3)*(6) + (err > 3)*(-err) + (err <= 3)*(err);
 					inimigos[i].somaDist += distancia(p, pos);
 					inimigos[i].distanciaMedia = (inimigos[i].somaDist)/((float) turno);
-					inimigos[i].somaAndou += 1;
 					inimigos[i].isInCp = g->map[pos.x][pos.y].isControlPoint;
 					inimigos[i].mirandoEmMim = rayCast(g, p, inimigos[i].pos, inimigos[i].dir, inimigos[i].distanciaAtual, NULL);
 					break;
@@ -219,43 +199,20 @@ void atualiza(Grid *g, Position p, Direction myDir){
 			if(j == 6)
 				inimigos[i].vivo = 0;
 		}
-		else if(inimigos[i].vivo){
-			r = &g->map[inimigos[i].pos.x][inimigos[i].pos.y].object.robot;
-			if(r->dir != inimigos[i].dir){
-				inimigos[i].dir = r->dir;
-				inimigos[i].somaVirou += 1;
-			}
-			for(j = 0; j < 6; j++){
-				pos = getNeighbor(inimigos[i].pos, j);
-				if(isProjectile(&g->map[pos.x][pos.y])){
-					Projectile *pr = &g->map[inimigos[i].pos.x][inimigos[i].pos.y].object.projectile;
-					if(pr->dir == inimigos[i].dir)
-						inimigos[i].somaAtirou += 1;
-					else if(abs(pr->dir - j) == 3) //Significa que o tiro esta direcionado para o inimigo sendo espiado
-						inimigos[i].tirosQueLevaria += 1;
-						
-				}
-				
-			}
-
-		}
+		
 		if(inimigos[i].vivo){
 			r = &g->map[inimigos[i].pos.x][inimigos[i].pos.y].object.robot;
 			inimigos[i].balas = r->bullets;
 			inimigos[i].score = r->score;
-			if(inimigos[i].vida != r->hp)
-				inimigos[i].tirosQueLevou +=1;
 			inimigos[i].vida = r->hp;
 			inimigos[i].obstaculos = r->obstacles;
-			if(inimigos[i].tirosQueLevaria)
-				inimigos[i].taxaDefesa = inimigos[i].tirosQueLevou/((float)inimigos[i].tirosQueLevaria);
+			
 		}		
 	}
 	if(turno == 1){
 		for(i = 0; i < g->m; i++)
 			for(j = 0 ; j < g->n; j++){
-				if(isControl(&g->map[i][j]) && l < 10){  
-					 //Aqui nao ta funcionando por alguma razao
+				if(isControl(&g->map[i][j]) && l < 10){ 
 					pos.x= i;
 					pos.y = j;
 					controles[l] = pos;
@@ -267,7 +224,7 @@ void atualiza(Grid *g, Position p, Direction myDir){
 
 }
 
-int sendoAlvejado(Grid *g, Position p, Direction dirs[], int n, Position me){
+int sendoAlvejado(Grid *g, Position p, Direction dirs[], int n, Position me){ 
 
 	Position pos;
 	Projectile *r;
@@ -311,7 +268,7 @@ int sendoAlvejado(Grid *g, Position p, Direction dirs[], int n, Position me){
 	return alvejado;
 }
 
-Position nearest(Grid *g, Position from, Position v[], int t, Direction myDir){
+Position nearest(Grid *g, Position from, Position v[], int t, Direction myDir){ /* retorna o ponto mais proximo pertencente ao vetor */
 	Position n;
 	int dist = 1000, aux, i, err;
 	n.x = from.x;
@@ -327,7 +284,7 @@ Position nearest(Grid *g, Position from, Position v[], int t, Direction myDir){
 	return n;
 }
 
-inimigo nearestEnemy(Grid *g, Position from, Direction myDir, int mode){
+inimigo nearestEnemy(Grid *g, Position from, Direction myDir, int mode){ /* retorna o inimigo mais proximo */
 	int aux, dist = 10000, i, err;
 	inimigo titular;
 	titular = inimigos[0];
@@ -344,13 +301,13 @@ inimigo nearestEnemy(Grid *g, Position from, Direction myDir, int mode){
 	return titular;
 }
 
-int isSafe(Grid *g, Position pos, int m, int n, Position me){
+int isSafe(Grid *g, Position pos, int m, int n, Position me){ /* funcao para verificar se a posicao eh segura */
 	Direction dirs[6];
 	return (isValid(pos, g->m, g->n) && !isProjectile(&g->map[pos.x][pos.y]) && !sendoAlvejado(g, pos, dirs, 1, me) && !isRobot(&g->map[pos.x][pos.y]) && !isBlock(&g->map[pos.x][pos.y]));
 
 }
 
-Direction safe(Grid *g, Position from, Direction myDir){
+Direction safe(Grid *g, Position from, Direction myDir){ 
 	int i;
 	Position poses[6];
 	Position pos;
@@ -373,9 +330,7 @@ Direction safe(Grid *g, Position from, Direction myDir){
 }
 
 void prepareGame(Grid *g, Position p, int turnCount) {
-	
-	charging = 0;
-	setName("Bumble Bee");
+	setName("Felix Diurno");
 	
 	carregando = 0;
 	myHp = 100;
@@ -385,7 +340,7 @@ void prepareGame(Grid *g, Position p, int turnCount) {
 	
 }
 
-Action bestTurn(Direction from, Direction to) {
+Action turn(Direction from, Direction to) {
 	if(((6 + from - to)%6) < 3) return TURN_LEFT;
 	else return TURN_RIGHT;
 }
@@ -421,7 +376,10 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 	inimigoPerto = nearestEnemy(g, p, myDir, 0);
 	findOfensiveSpots(g, p, posOfensiva, inimigoPerto);
 
-	if(sendoAlvejado(g, p, dirs, 1, p) || eu->hp < myHp){   /*Verifica se nos tiles vizinhos ha balas vindo em sua direcao*/
+
+
+
+	if(sendoAlvejado(g, p, dirs, 1, p) || eu->hp < myHp){ /* Verifica se ha projeteis nas posicoes vizinhas vindo nessa direcao */
 		myHp = eu->hp;
 		
 		if(isSafe(g,getNeighbor(p, myDir), g->m, g->n, p)){
@@ -433,18 +391,18 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 			
 			obj = shortestPath(g, p, nearest(g, p, controles, 10, myDir));
 			
-			return bestTurn(myDir, safe(g, p, myDir));
+			return turn(myDir, safe(g, p, myDir));
 		}
 	}
 
-	else if(sendoAlvejado(g, p, dirs, 2, p)){ /*verifica a 2 tiles de distancia se ha balas vindo em sua direcao*/
+	else if(sendoAlvejado(g, p, dirs, 2, p)){ /* Verifica de ha projeteis a 2 tiles de distancia vindo nessa direcao */
 
 		for(i = 2; i < 5; i++)
-			if(dirs[(6 + myDir + i)%6])	
+			if(dirs[(6 + myDir + i)%6] && eu->obstacles > 0 && !isBlock(&g->map[p.x][p.y]))
 				return obstacle(i);
 		
 		if(dirs[myDir] || dirs[(6 + myDir-3)%6])
-			return bestTurn(myDir, safe(g, p, myDir));
+			return turn(myDir, safe(g, p, myDir));
 		
 		
 		else if(isSafe(g,getNeighbor(p, myDir), g->m, g->n, p)){
@@ -452,7 +410,7 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 			return WALK;
 		}
 		else
-			return bestTurn(myDir, safe(g, p, myDir));
+			return turn(myDir, safe(g, p, myDir));
 		
 		
 	} 
@@ -460,7 +418,7 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 	
 
 
-	/*else if(distancia(p, inimigoPerto.pos) < 4 && inimigoPerto.balas >=4 && inimigoPerto.mirandoEmMim){
+	else if(distancia(p, inimigoPerto.pos) < 4 && inimigoPerto.balas >=4 && inimigoPerto.mirandoEmMim){ /*comportamento para quando o inimigo esta perto demais e mirando */
 		if(isSafe(g,getNeighbor(p, myDir), g->m, g->n, p) && inimigoPerto.dir != (6 + myDir-3)%6){
 			
 			carregando = 0;
@@ -470,14 +428,14 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 			
 			
 			obj = shortestPath(g, p, nearest(g, p, posOfensiva, 6, myDir));
-			return bestTurn(myDir, obj);
+			return turn(myDir, obj);
 		}
 	}
 
 
-*/
 
-	if(rayCast(g, inimigoPerto.pos, p, myDir, 4, &di) && eu->bullets > 0){ /*Verifica se ha alguem em sua mira */
+
+	if(rayCast(g, inimigoPerto.pos, p, myDir, 4, &di) && eu->bullets > 0){/* se ha inimigos na mira, a 4 tiles de distancia ou menos, atira */
 		if(di == 0)
 			return SHOOT_CENTER;
 		else if(di == 1)
@@ -486,24 +444,24 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 			return SHOOT_LEFT;
 	}
 
-	if(distancia(p, nearest(g, p, posOfensiva, 6, myDir)) < distancia(p, nearest(g, p, controles, 10, myDir)) && eu->bullets > 0){ 
+	if(distancia(p, nearest(g, p, posOfensiva, 6, myDir)) + 1< distancia(p, nearest(g, p, controles, 10, myDir)) && eu->bullets > 0){ /*Comportamento para quando os pontos ofensivos estao mais proximos do que os pontos dde controle */
 		obj = shortestPath(g, p, nearest(g, p, posOfensiva, 6, myDir));
 		
 
 		if(rayCast(g, inimigoPerto.pos, p, (6 + myDir - 3)%6, 4, &di)){
-			return bestTurn(myDir, di);
+			return turn(myDir, di);
 		}
 
-		else if(obj == myDir && isSafe(g,getNeighbor(p, myDir), g->m, g->n, p) && !charging){
+		else if(obj == myDir && isSafe(g,getNeighbor(p, myDir), g->m, g->n, p) && !carregando){
 			carregando = 0;
 			return WALK;
 		}
 		else
-			return bestTurn(myDir, obj);
+			return turn(myDir, obj);
 		
 	}
 
-	if(g->map[p.x][p.y].isControlPoint){
+	if(g->map[p.x][p.y].isControlPoint){ /* se estiver em um ponto de controle, ficar parado */
 		carregando = 1;
 		
 		return STAND;
@@ -512,7 +470,7 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 
 
 
-	if(eu->bullets < 4){
+	if(eu->bullets < 4){ /* se as balas estiverem acabando ele procura um ponto de controle */
 		
 		obj = shortestPath(g, p, nearest(g, p, controles, 10, myDir));
 		
@@ -522,10 +480,11 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 			return WALK;
 		}
 		else
-			return bestTurn(myDir, obj);
+			return turn(myDir, obj);
 			
 	}
 	
+	/*Comportamento para quando nenhum dos anteriores eh ativado */
 	
 	obj = shortestPath(g, p, nearest(g, p, controles, 10, myDir));
 		
@@ -536,7 +495,7 @@ Action processTurn(Grid *g, Position p, int turnsLeft) {
 	}
 	else{
 		
-		return bestTurn(myDir, obj);
+		return turn(myDir, obj);
 	}	
 	
 }
