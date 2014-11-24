@@ -330,7 +330,7 @@ Direction safe(Grid *g, Position from, Direction myDir){
 }
 
 void prepareGame(Grid *g, Position p, int turnCount) {
-	setName("Bumble Bee");
+	setName("Felix Diurno");
 	
 	carregando = 0;
 	myHp = 100;
